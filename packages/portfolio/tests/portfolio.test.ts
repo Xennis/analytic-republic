@@ -6,6 +6,7 @@ import {
   breakdownBySector,
   CASH_NODE_ID,
   companies,
+  countriesOf,
   lookThrough,
   totals,
   valuePositions,
@@ -124,6 +125,21 @@ describe("breakdownByRegion", () => {
     const germany = node("europe", "DE");
     expect(germany?.byFund[world.isin]).toBeCloseTo(350);
     expect(germany?.byFund[europe.isin]).toBeCloseTo(120);
+  });
+});
+
+describe("countriesOf", () => {
+  const tree = countriesOf(breakdownByRegion(lookThrough(valued)));
+
+  test("lists the countries of all regions without cash, largest first", () => {
+    expect(tree.value).toBeCloseTo(1150);
+    expect(tree.byFund[europe.isin]).toBeCloseTo(200);
+    expect(tree.children.map((c) => [c.id, Math.round(c.value)])).toEqual([
+      ["US", 500],
+      ["DE", 470],
+      ["CA", 100],
+      ["CH", 80],
+    ]);
   });
 });
 

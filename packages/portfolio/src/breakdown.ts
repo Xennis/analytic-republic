@@ -150,6 +150,22 @@ export function breakdownBySector(exposures: readonly Exposure[]): BreakdownNode
   return freeze(root);
 }
 
+/** Countries of a region tree as one level, largest first. Cash is left out. */
+export function countriesOf(regions: BreakdownNode): BreakdownNode {
+  const root = createNode("countries", "Alle Länder");
+  const countries = regions.children
+    .filter((region) => region.id !== CASH_NODE_ID)
+    .flatMap((region) => region.children)
+    .sort((a, b) => b.value - a.value);
+  for (const country of countries) {
+    root.value += country.value;
+    for (const [isin, value] of Object.entries(country.byFund)) {
+      root.byFund[isin] = (root.byFund[isin] ?? 0) + value;
+    }
+  }
+  return { ...freeze(root), children: countries };
+}
+
 /** All equity companies across funds, largest first. */
 export function companies(exposures: readonly Exposure[]): BreakdownNode[] {
   const root = createNode("companies", "Unternehmen");

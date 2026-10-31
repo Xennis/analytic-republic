@@ -3,6 +3,7 @@ import {
   breakdownByRegion,
   breakdownBySector,
   companies,
+  countriesOf,
   lookThrough,
   totals,
   valuePositions,
@@ -22,6 +23,8 @@ export type Analysis = {
   /** Funds with data, largest first. Fixes label and color of each fund for all charts. */
   funds: FundSeries[];
   regions: BreakdownNode;
+  /** Countries across all regions, without cash. */
+  countries: BreakdownNode;
   sectors: BreakdownNode;
   companies: BreakdownNode[];
   /** Positions that could not be valued because the cache has no data for them. */
@@ -38,6 +41,7 @@ export function analyze(
   );
   const withData = valued.filter((position) => position.marketValue !== undefined);
   const exposures = lookThrough(withData);
+  const regions = breakdownByRegion(exposures);
 
   return {
     positions: valued,
@@ -47,7 +51,8 @@ export function analyze(
       label: shortFundName(position.fund?.name ?? position.name),
       color: seriesColor(index),
     })),
-    regions: breakdownByRegion(exposures),
+    regions,
+    countries: countriesOf(regions),
     sectors: breakdownBySector(exposures),
     companies: companies(exposures),
     missing: valued.filter((position) => position.marketValue === undefined),

@@ -3,15 +3,33 @@ import { AlertTriangle, RotateCcw } from "lucide-react";
 import { useMemo, useState } from "react";
 import { CsvDropzone } from "@/components/CsvDropzone";
 import { FundAllocation } from "@/components/FundAllocation";
+import { GroupBreakdown, type GroupTexts } from "@/components/GroupBreakdown";
 import { KpiCards } from "@/components/KpiCards";
 import { RegionBreakdown } from "@/components/RegionBreakdown";
-import { SectorBreakdown } from "@/components/SectorBreakdown";
 import { TopCompanies } from "@/components/TopCompanies";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { cacheOutdated, cachedFunds, cachedFx } from "@/lib/fund-data";
 import { formatDate } from "@/lib/format";
 import { analyze } from "@/lib/portfolio";
+
+const COUNTRY_COUNT = 15;
+
+const COUNTRY_TEXTS: GroupTexts = {
+  title: "Länder",
+  hint: "In Prozent vom Depot. Klicke auf ein Land, um seine Unternehmen zu sehen.",
+  groupHint: "Größte Unternehmen des Landes, in Prozent vom Depot.",
+  inGroup: "im Land",
+  groups: "Ländern",
+};
+
+const SECTOR_TEXTS: GroupTexts = {
+  title: "Sektoren",
+  hint: "In Prozent vom Depot. Klicke auf einen Sektor, um seine Unternehmen zu sehen.",
+  groupHint: "Größte Unternehmen des Sektors, in Prozent vom Depot.",
+  inGroup: "im Sektor",
+  groups: "Sektoren",
+};
 
 type Upload = { fileName: string; csv: string };
 
@@ -124,11 +142,22 @@ export default function App() {
             total={analysis.totals.marketValue}
           />
           <RegionBreakdown key={upload?.fileName} root={analysis.regions} funds={analysis.funds} />
-          <SectorBreakdown
+          <GroupBreakdown
+            key={`countries-${upload?.fileName}`}
+            root={analysis.countries}
+            funds={analysis.funds}
+            total={analysis.totals.marketValue}
+            texts={COUNTRY_TEXTS}
+            groupCount={COUNTRY_COUNT}
+            labelWidth={150}
+          />
+          <GroupBreakdown
             key={`sectors-${upload?.fileName}`}
             root={analysis.sectors}
             funds={analysis.funds}
             total={analysis.totals.marketValue}
+            texts={SECTOR_TEXTS}
+            labelWidth={110}
           />
           <TopCompanies
             companies={analysis.companies}

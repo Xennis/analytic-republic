@@ -15,26 +15,39 @@ import { FundStackedBars } from "./FundStackedBars";
 
 const COMPANY_COUNT = 15;
 
+export type GroupTexts = {
+  title: string;
+  /** Description on the top level. */
+  hint: string;
+  /** Description once a group is open. */
+  groupHint: string;
+  /** E.g. "im Sektor", completes "… Positionen im Sektor". */
+  inGroup: string;
+  /** Plural of the groups, e.g. "Ländern", completes "Zeigt 15 von 40 Ländern". */
+  groups: string;
+};
+
 type Props = {
   root: BreakdownNode;
   funds: FundSeries[];
   total: number;
+  texts: GroupTexts;
+  /** Shows only the largest groups. */
+  groupCount?: number;
+  labelWidth?: number;
 };
 
-/** Sectors as stacked bars; a click on a sector shows its largest companies. */
-export function SectorBreakdown({ root, funds, total }: Props) {
+/** Groups (e.g. sectors) as stacked bars; a click on a group shows its largest companies. */
+export function GroupBreakdown({ root, funds, total, texts, groupCount, labelWidth }: Props) {
   const [selectedId, setSelectedId] = useState<string>();
-  const selected = root.children.find((sector) => sector.id === selectedId);
+  const selected = root.children.find((group) => group.id === selectedId);
+  const groups = root.children.slice(0, groupCount);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Sektoren</CardTitle>
-        <CardDescription>
-          {selected
-            ? "Größte Unternehmen des Sektors, in Prozent vom Depot."
-            : "In Prozent vom Depot. Klicke auf einen Sektor, um seine Unternehmen zu sehen."}
-        </CardDescription>
+        <CardTitle>{texts.title}</CardTitle>
+        <CardDescription>{selected ? texts.groupHint : texts.hint}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <Breadcrumb>
@@ -72,18 +85,27 @@ export function SectorBreakdown({ root, funds, total }: Props) {
             />
             <p className="text-xs text-muted-foreground">
               Zeigt {Math.min(COMPANY_COUNT, selected.children.length)} von{" "}
-              {selected.children.length.toLocaleString("de-DE")} Positionen im Sektor (zusammen{" "}
-              {formatPercent(selected.value / total)} vom Depot).
+              {selected.children.length.toLocaleString("de-DE")} Positionen {texts.inGroup}{" "}
+              (zusammen {formatPercent(selected.value / total)} vom Depot).
             </p>
           </>
         ) : (
-          <FundStackedBars
-            rows={root.children}
-            funds={funds}
-            total={total}
-            labelWidth={110}
-            onRowClick={(sector) => setSelectedId(sector.id)}
-          />
+          <>
+            <FundStackedBars
+              rows={groups}
+              funds={funds}
+              total={total}
+              labelWidth={labelWidth}
+              onRowClick={(group) => setSelectedId(group.id)}
+            />
+            {groups.length < root.children.length && (
+              <p className="text-xs text-muted-foreground">
+                Zeigt {groups.length} von {root.children.length} {texts.groups} (zusammen{" "}
+                {formatPercent(groups.reduce((sum, group) => sum + group.value, 0) / total)} vom
+                Depot).
+              </p>
+            )}
+          </>
         )}
       </CardContent>
     </Card>

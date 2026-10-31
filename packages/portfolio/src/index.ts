@@ -4,6 +4,7 @@ export {
   breakdownBySector,
   CASH_NODE_ID,
   companies,
+  countriesOf,
   lookThrough,
   type BreakdownNode,
   type Exposure,
