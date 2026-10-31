@@ -1,0 +1,26 @@
+{
+  "name": "analytic-republic",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vp run web#dev",
+    "build": "vp run web#build",
+    "test": "vp run -r test",
+    "check": "vp check",
+    "fetch-data": "vp run @analytic-republic/etf-data#fetch"
+  },
+  "devDependencies": {
+    "vite-plus": "catalog:"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "12.16.1",
+      "onFail": "download"
+    }
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  }
+}

@@ -13,3 +13,5 @@ coverage/
 packages/etf-data/cache/
 
 .DS_Store
+*.local
+.vite/
