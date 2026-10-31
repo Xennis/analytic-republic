@@ -1,3 +1,5 @@
+import type { SectorId } from "./sectors.ts";
+
 export type HoldingKind = "equity" | "cash" | "derivative" | "other";
 
 export type Holding = {
@@ -8,7 +10,8 @@ export type Holding = {
   weight: number;
   /** ISO 3166-1 alpha-2 country of risk, "EU" for euro positions without a country. */
   country?: string;
-  sector?: string;
+  /** Only set for equities. */
+  sector?: SectorId;
   kind: HoldingKind;
 };
 

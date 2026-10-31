@@ -73,7 +73,7 @@ describe("normalizeIsharesFund", () => {
           isin: "US0000000001",
           weight: 0.6,
           country: "US",
-          sector: "IT",
+          sector: "information-technology",
           kind: "equity",
         },
         {
@@ -81,14 +81,13 @@ describe("normalizeIsharesFund", () => {
           isin: "KR0000000001",
           weight: 0.3,
           country: "KR",
-          sector: "Finanzwesen",
+          sector: "financials",
           kind: "equity",
         },
         {
           name: "EUR CASH",
           weight: 0.095,
           country: "EU",
-          sector: "Cash und/oder Derivate",
           kind: "cash",
         },
         { name: "S&P500 EMINI DEC 26", weight: 0.005, kind: "derivative" },
@@ -107,8 +106,13 @@ describe("normalizeIsharesFund", () => {
     expect(() => normalizeIsharesFund(ref, fundHeader(), data)).toThrow(/Atlantis/);
   });
 
+  test("rejects unknown sector names of equities", () => {
+    const data = holdings([["X", null, 100, "Japan", "Raumfahrt", "Aktien"]]);
+    expect(() => normalizeIsharesFund(ref, fundHeader(), data)).toThrow(/Raumfahrt/);
+  });
+
   test("rejects incomplete holdings", () => {
-    const data = holdings([["X", null, 50, "Japan", null, "Aktien"]]);
+    const data = holdings([["X", null, 50, "Japan", "IT", "Aktien"]]);
     expect(() => normalizeIsharesFund(ref, fundHeader(), data)).toThrow(/50.00 %/);
   });
 

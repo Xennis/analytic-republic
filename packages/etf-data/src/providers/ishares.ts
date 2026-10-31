@@ -2,6 +2,7 @@ import { z } from "zod";
 import { countryCodeFromGermanName } from "../countries.ts";
 import type { FundData, Holding, HoldingKind } from "../model.ts";
 import type { IsharesFundRef } from "../registry.ts";
+import type { SectorId } from "../sectors.ts";
 
 // Unofficial JSON API behind the iShares product pages (relaunched 2026). The old
 // "...ajax?fileType=csv" download only returns HTML now.
@@ -76,6 +77,21 @@ const KIND_BY_ASSET_CLASS: Record<string, HoldingKind> = {
   FX: "derivative",
 };
 
+// GICS sector names as published on the German iShares site.
+const SECTOR_BY_NAME: Record<string, SectorId> = {
+  IT: "information-technology",
+  Finanzwesen: "financials",
+  Industrie: "industrials",
+  Gesundheitsversorgung: "health-care",
+  "Zyklische Konsumgüter": "consumer-discretionary",
+  "Nichtzyklische Konsumgüter": "consumer-staples",
+  Kommunikation: "communication-services",
+  Energie: "energy",
+  Materialien: "materials",
+  Versorger: "utilities",
+  Immobilien: "real-estate",
+};
+
 /** 20261029 → "2026-10-29" */
 function isoDate(value: number): string {
   const digits = String(value);
@@ -121,6 +137,7 @@ export function normalizeIsharesFund(
 
   const holdings: Holding[] = [];
   const unknownCountries = new Set<string>();
+  const unknownSectors = new Set<string>();
   names.forEach((name, i) => {
     const percent = columns.holdingPercent.value[i] ?? 0;
     if (!name || percent === 0) return;
@@ -137,8 +154,12 @@ export function normalizeIsharesFund(
     const holdingIsin = columns.isin.value[i]?.trim();
     if (holdingIsin && holdingIsin !== "-") holding.isin = holdingIsin;
     if (country) holding.country = country;
-    const sector = columns.sectorName.value[i]?.trim();
-    if (sector && sector !== "-") holding.sector = sector;
+    if (holding.kind === "equity") {
+      const sectorName = columns.sectorName.value[i]?.trim() ?? "";
+      const sector = SECTOR_BY_NAME[sectorName];
+      if (sector) holding.sector = sector;
+      else unknownSectors.add(sectorName || "(leer)");
+    }
     holdings.push(holding);
   });
 
@@ -146,6 +167,12 @@ export function normalizeIsharesFund(
     throw new IsharesError(
       `Unknown country names in ${ref.isin}: ${[...unknownCountries].join(", ")}. ` +
         "Add them to GERMAN_NAME_OVERRIDES in countries.ts.",
+    );
+  }
+  if (unknownSectors.size > 0) {
+    throw new IsharesError(
+      `Unknown sector names in ${ref.isin}: ${[...unknownSectors].join(", ")}. ` +
+        "Add them to SECTOR_BY_NAME in providers/ishares.ts.",
     );
   }
   const totalWeight = holdings.reduce((sum, holding) => sum + holding.weight, 0);
