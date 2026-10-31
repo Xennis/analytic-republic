@@ -1,4 +1,4 @@
-import { countryLabel, type BreakdownNode } from "@analytic-republic/portfolio";
+import { countryLabel, sectorLabel, type BreakdownNode } from "@analytic-republic/portfolio";
 import { Search } from "lucide-react";
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,7 +32,12 @@ export function TopCompanies({ companies, funds, total }: Props) {
   const ranked = companies.map((company, index) => ({ company, rank: index + 1 }));
   const needle = query.trim().toLowerCase();
   const matches = needle
-    ? ranked.filter(({ company }) => company.label.toLowerCase().includes(needle))
+    ? ranked.filter(({ company }) => {
+        const sector = sectorLabel(company.sector);
+        return [company.label, sector.short, sector.full].some((text) =>
+          text.toLowerCase().includes(needle),
+        );
+      })
     : ranked;
 
   return (
@@ -44,7 +49,7 @@ export function TopCompanies({ companies, funds, total }: Props) {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        <FundStackedBars rows={companies.slice(0, CHART_COUNT)} funds={funds} />
+        <FundStackedBars rows={companies.slice(0, CHART_COUNT)} funds={funds} total={total} />
 
         <div className="flex flex-col gap-3">
           <div className="relative max-w-sm">
@@ -52,7 +57,7 @@ export function TopCompanies({ companies, funds, total }: Props) {
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder={`${companies.length.toLocaleString("de-DE")} Unternehmen durchsuchen`}
+              placeholder="Unternehmen oder Sektor suchen"
               className="pl-8"
               aria-label="Unternehmen suchen"
             />
@@ -64,8 +69,9 @@ export function TopCompanies({ companies, funds, total }: Props) {
                   <TableHead className="w-12 text-right">#</TableHead>
                   <TableHead>Unternehmen</TableHead>
                   <TableHead>Land</TableHead>
-                  <TableHead className="text-right">Wert</TableHead>
+                  <TableHead>Sektor</TableHead>
                   <TableHead className="text-right">Anteil</TableHead>
+                  <TableHead className="text-right">Wert</TableHead>
                   <TableHead className="w-40">Aus ETFs</TableHead>
                 </TableRow>
               </TableHeader>
@@ -79,11 +85,17 @@ export function TopCompanies({ companies, funds, total }: Props) {
                     <TableCell className="text-muted-foreground">
                       {countryLabel(company.country)}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatEur(company.value)}
+                    <TableCell
+                      className="text-muted-foreground"
+                      title={sectorLabel(company.sector).full}
+                    >
+                      {sectorLabel(company.sector).short}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {formatPercent(company.value / total)}
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground tabular-nums">
+                      {formatEur(company.value)}
                     </TableCell>
                     <TableCell>
                       <FundMixBar byFund={company.byFund} funds={funds} />
