@@ -29,6 +29,18 @@ export type FundData = {
   holdings: Holding[];
 };
 
+/** Shares of world GDP from the IMF World Economic Outlook. */
+export type EconomyData = {
+  /** ISO date of the download. The API does not name the WEO edition. */
+  asOf: string;
+  /** Year of the values, the last completed year. */
+  year: number;
+  /** Share of world GDP in current USD per ISO 3166-1 alpha-2 country, 0..1. */
+  gdpNominal: Record<string, number>;
+  /** Same in purchasing power parity. */
+  gdpPpp: Record<string, number>;
+};
+
 export type FxRates = {
   /** ISO date of the reference rates. */
   asOf: string;
