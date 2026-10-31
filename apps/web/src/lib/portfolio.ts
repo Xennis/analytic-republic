@@ -1,13 +1,17 @@
-import type { FundData, FxRates } from "@analytic-republic/etf-data";
+import type { EconomyData, FundData, FxRates } from "@analytic-republic/etf-data";
 import {
   breakdownByRegion,
   breakdownBySector,
   companies,
   countriesOf,
+  countryShares,
+  fundExposures,
   lookThrough,
+  sectorShares,
   totals,
   valuePositions,
   type BreakdownNode,
+  type Shares,
   type Totals,
   type ValuedPosition,
 } from "@analytic-republic/portfolio";
@@ -36,6 +40,10 @@ export type Analysis = {
   /** Countries across all regions, without cash. */
   countries: BreakdownNode;
   sectors: BreakdownNode;
+  /** Shares of the equities, without cash. */
+  countryShares: Shares;
+  /** Shares of the equities, without cash and holdings without a sector. */
+  sectorShares: Shares;
   companies: BreakdownNode[];
   /** Positions that could not be valued because the cache has no data for them. */
   missing: ValuedPosition[];
@@ -54,6 +62,8 @@ export function analyze(
   const withData = valued.filter((position) => position.marketValue !== undefined);
   const exposures = lookThrough(withData);
   const regions = breakdownByRegion(exposures);
+  const countries = countriesOf(regions);
+  const sectors = breakdownBySector(exposures);
 
   return {
     positions: valued,
@@ -64,8 +74,10 @@ export function analyze(
       color: seriesColor(index),
     })),
     regions,
-    countries: countriesOf(regions),
-    sectors: breakdownBySector(exposures),
+    countries,
+    sectors,
+    countryShares: countryShares(countries),
+    sectorShares: sectorShares(sectors),
     companies: companies(exposures),
     missing: valued.filter((position) => position.marketValue === undefined),
     countryCorrections: exposures
@@ -84,4 +96,31 @@ export function analyze(
       )
       .sort((a, b) => b.value - a.value),
   };
+}
+
+export type WorldBenchmarks = {
+  /** Shares of world GDP. */
+  gdp?: { year: number; nominal: Shares; ppp: Shares };
+  /** Shares of the world equity market, broken down like the portfolio. */
+  market?: { name: string; asOf: string; countries: Shares; sectors: Shares };
+};
+
+export function worldBenchmarks(
+  economy: EconomyData | undefined,
+  marketFund: FundData | undefined,
+): WorldBenchmarks {
+  const benchmarks: WorldBenchmarks = {};
+  if (economy) {
+    benchmarks.gdp = { year: economy.year, nominal: economy.gdpNominal, ppp: economy.gdpPpp };
+  }
+  if (marketFund) {
+    const exposures = fundExposures(marketFund);
+    benchmarks.market = {
+      name: shortFundName(marketFund.name),
+      asOf: marketFund.holdingsAsOf,
+      countries: countryShares(countriesOf(breakdownByRegion(exposures))),
+      sectors: sectorShares(breakdownBySector(exposures)),
+    };
+  }
+  return benchmarks;
 }

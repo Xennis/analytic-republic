@@ -7,11 +7,18 @@ import { GroupBreakdown, type GroupTexts } from "@/components/GroupBreakdown";
 import { KpiCards } from "@/components/KpiCards";
 import { RegionBreakdown } from "@/components/RegionBreakdown";
 import { TopCompanies } from "@/components/TopCompanies";
+import { WorldComparison } from "@/components/WorldComparison";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { cacheOutdated, cachedFunds, cachedFx } from "@/lib/fund-data";
+import {
+  cacheOutdated,
+  cachedEconomy,
+  cachedFunds,
+  cachedFx,
+  cachedWorldBenchmark,
+} from "@/lib/fund-data";
 import { formatDate } from "@/lib/format";
-import { analyze } from "@/lib/portfolio";
+import { analyze, worldBenchmarks } from "@/lib/portfolio";
 
 const COUNTRY_COUNT = 15;
 
@@ -32,6 +39,9 @@ const SECTOR_TEXTS: GroupTexts = {
 };
 
 type Upload = { fileName: string; csv: string };
+
+const benchmarks = worldBenchmarks(cachedEconomy, cachedWorldBenchmark);
+const hasBenchmarks = Boolean(benchmarks.gdp ?? benchmarks.market);
 
 function dataStatus(): string | undefined {
   const funds = [...cachedFunds.values()];
@@ -156,6 +166,13 @@ export default function App() {
             groupCount={COUNTRY_COUNT}
             labelWidth={150}
           />
+          {hasBenchmarks && (
+            <WorldComparison
+              key={`world-${upload?.fileName}`}
+              countries={analysis.countryShares}
+              benchmarks={benchmarks}
+            />
+          )}
           <GroupBreakdown
             key={`sectors-${upload?.fileName}`}
             root={analysis.sectors}

@@ -20,3 +20,10 @@ export const RANK_OTHER_COLOR = "var(--rank-other)";
 export function rankColor(index: number): string {
   return index < RANK_COUNT ? `var(--rank-${index + 1})` : RANK_OTHER_COLOR;
 }
+
+/** Portfolio and benchmarks in comparisons, from the same neutral ramp. */
+export const COMPARISON_COLORS = {
+  portfolio: "var(--rank-1)",
+  market: "var(--rank-4)",
+  gdp: "var(--rank-6)",
+};
