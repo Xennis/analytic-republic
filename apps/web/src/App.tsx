@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { CsvDropzone } from "@/components/CsvDropzone";
 import { FundAllocation } from "@/components/FundAllocation";
 import { KpiCards } from "@/components/KpiCards";
+import { RegionBreakdown } from "@/components/RegionBreakdown";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { cachedFunds, cachedFx } from "@/lib/fund-data";
@@ -107,6 +108,7 @@ export default function App() {
             funds={analysis.funds}
             total={analysis.totals.marketValue}
           />
+          <RegionBreakdown key={upload?.fileName} root={analysis.regions} funds={analysis.funds} />
         </>
       )}
     </div>
