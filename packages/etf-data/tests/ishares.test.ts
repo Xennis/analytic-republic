@@ -120,7 +120,7 @@ describe("normalizeIsharesFund", () => {
 describe("fetchIsharesFund", () => {
   test("requests both components of the portfolio", async () => {
     const urls: URL[] = [];
-    const fakeFetch = (async (input: string | URL | Request) => {
+    const fakeFetch = (async (input: string | URL) => {
       const url = new URL(String(input));
       urls.push(url);
       const body =

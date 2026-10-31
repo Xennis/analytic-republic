@@ -175,7 +175,7 @@ async function getComponent(
     portfolioId: String(ref.portfolioId),
     component,
   });
-  const response = await fetchFn(`${API_URL}?${params}`, {
+  const response = await fetchFn(`${API_URL}?${params.toString()}`, {
     headers: { Accept: "application/json" },
   });
   if (!response.ok) {
