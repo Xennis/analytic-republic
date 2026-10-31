@@ -91,7 +91,7 @@ describe("breakdownByRegion", () => {
     const us = node("north-america", "US");
     expect(us?.label).toBe("Vereinigte Staaten");
     expect(us?.children).toHaveLength(1);
-    expect(us?.children[0]?.label).toBe("ALPHABET");
+    expect(us?.children[0]).toMatchObject({ label: "ALPHABET", country: "US" });
     expect(us?.children[0]?.value).toBeCloseTo(500);
   });
 

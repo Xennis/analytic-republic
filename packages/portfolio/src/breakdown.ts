@@ -17,6 +17,8 @@ export type BreakdownNode = {
   value: number;
   /** EUR per fund ISIN that contributes to this node. */
   byFund: Record<string, number>;
+  /** ISO country code, set on company nodes. */
+  country?: string;
   /** Largest first. */
   children: BreakdownNode[];
 };
@@ -64,6 +66,7 @@ function addCompany(parent: MutableNode, exposure: Exposure): void {
   const { holding } = exposure;
   const company = child(parent, issuerKey(holding.name, holding.country), "");
   add(company, exposure);
+  company.country = holding.country;
   if (exposure.value > company.labelWeight) {
     company.label = companyName(holding.name);
     company.labelWeight = exposure.value;
@@ -71,13 +74,15 @@ function addCompany(parent: MutableNode, exposure: Exposure): void {
 }
 
 function freeze(node: MutableNode): BreakdownNode {
-  return {
+  const frozen: BreakdownNode = {
     id: node.id,
     label: node.label,
     value: node.value,
     byFund: node.byFund,
     children: [...node.children.values()].map(freeze).sort((a, b) => b.value - a.value),
   };
+  if (node.country) frozen.country = node.country;
+  return frozen;
 }
 
 /**
