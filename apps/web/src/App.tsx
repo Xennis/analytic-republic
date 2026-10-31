@@ -6,6 +6,7 @@ import { FundAllocation } from "@/components/FundAllocation";
 import { GroupBreakdown, type GroupTexts } from "@/components/GroupBreakdown";
 import { KpiCards } from "@/components/KpiCards";
 import { RegionBreakdown } from "@/components/RegionBreakdown";
+import { SectorComparison } from "@/components/SectorComparison";
 import { TopCompanies } from "@/components/TopCompanies";
 import { WorldComparison } from "@/components/WorldComparison";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -181,6 +182,9 @@ export default function App() {
             texts={SECTOR_TEXTS}
             labelWidth={110}
           />
+          {benchmarks.market && (
+            <SectorComparison sectors={analysis.sectorShares} market={benchmarks.market} />
+          )}
           <TopCompanies
             companies={analysis.companies}
             funds={analysis.funds}
