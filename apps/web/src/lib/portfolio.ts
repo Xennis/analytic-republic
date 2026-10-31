@@ -17,6 +17,16 @@ import { shortFundName } from "./format.ts";
 
 export type FundSeries = { isin: string; label: string; color: string };
 
+/** Fund holding whose country was taken from its name instead of the provider data. */
+export type CountryCorrection = {
+  name: string;
+  fundIsin: string;
+  country: string;
+  reportedCountry: string;
+  /** EUR */
+  value: number;
+};
+
 export type Analysis = {
   positions: ValuedPosition[];
   totals: Totals;
@@ -29,6 +39,8 @@ export type Analysis = {
   companies: BreakdownNode[];
   /** Positions that could not be valued because the cache has no data for them. */
   missing: ValuedPosition[];
+  /** Largest first. */
+  countryCorrections: CountryCorrection[];
 };
 
 export function analyze(
@@ -56,5 +68,20 @@ export function analyze(
     sectors: breakdownBySector(exposures),
     companies: companies(exposures),
     missing: valued.filter((position) => position.marketValue === undefined),
+    countryCorrections: exposures
+      .flatMap(({ fundIsin, holding, value }) =>
+        holding.reportedCountry && holding.country
+          ? [
+              {
+                name: holding.name,
+                fundIsin,
+                country: holding.country,
+                reportedCountry: holding.reportedCountry,
+                value,
+              },
+            ]
+          : [],
+      )
+      .sort((a, b) => b.value - a.value),
   };
 }

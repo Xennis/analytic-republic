@@ -29,3 +29,25 @@ function germanNameIndex(): Map<string, string> {
 export function countryCodeFromGermanName(name: string): string | undefined {
   return germanNameIndex().get(name.trim());
 }
+
+let englishNames: [string, string][] | undefined;
+
+/** Upper-case English country names, longest first so "SOUTH AFRICA" wins over "AFRICA". */
+function englishNameIndex(): [string, string][] {
+  if (englishNames) return englishNames;
+  const displayNames = new Intl.DisplayNames(["en"], { type: "region", fallback: "none" });
+  englishNames = [];
+  for (const code of germanNameIndex().values()) {
+    const name = displayNames.of(code);
+    if (name && code !== "EU") englishNames.push([name.toUpperCase(), code]);
+  }
+  englishNames.push(["KOREA", "KR"]);
+  englishNames.sort(([a], [b]) => b.length - a.length);
+  return englishNames;
+}
+
+/** Finds a country in an English text, e.g. "ISHARES MSCI BRAZIL UCITS ET" → "BR". */
+export function countryCodeInEnglishText(text: string): string | undefined {
+  const upper = ` ${text.toUpperCase().replace(/[^A-Z]+/g, " ")} `;
+  return englishNameIndex().find(([name]) => upper.includes(` ${name} `))?.[1];
+}

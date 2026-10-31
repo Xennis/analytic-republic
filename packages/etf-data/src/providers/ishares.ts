@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { countryCodeFromGermanName } from "../countries.ts";
+import { countryCodeFromGermanName, countryCodeInEnglishText } from "../countries.ts";
 import type { FundData, Holding, HoldingKind } from "../model.ts";
 import type { IsharesFundRef } from "../fund-ref.ts";
 import type { SectorId } from "../sectors.ts";
@@ -107,6 +107,10 @@ const SECTOR_BY_NAME: Record<string, SectorId> = {
   Immobilien: "real-estate",
 };
 
+// Some funds hold other iShares ETFs, e.g. a country ETF in an emerging markets fund.
+// iShares reports their domicile as country and "Finanzwesen" as sector.
+const FUND_NAME = /^ISHARES\b/i;
+
 /** 20261029 → "2026-10-29" */
 function isoDate(value: number): string {
   const digits = String(value);
@@ -168,8 +172,12 @@ export function normalizeIsharesFund(
     };
     const holdingIsin = columns.isin.value[i]?.trim();
     if (holdingIsin && holdingIsin !== "-") holding.isin = holdingIsin;
-    if (country) holding.country = country;
-    if (holding.kind === "equity") {
+    const isFund = FUND_NAME.test(holding.name);
+    const fundCountry = isFund ? countryCodeInEnglishText(holding.name) : undefined;
+    if (fundCountry ?? country) holding.country = fundCountry ?? country;
+    if (fundCountry && country && fundCountry !== country) holding.reportedCountry = country;
+    if (isFund) holding.isFund = true;
+    if (holding.kind === "equity" && !isFund) {
       const sectorName = columns.sectorName.value[i]?.trim() ?? "";
       const sector = SECTOR_BY_NAME[sectorName];
       if (sector) holding.sector = sector;

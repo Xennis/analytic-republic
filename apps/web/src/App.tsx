@@ -141,7 +141,12 @@ export default function App() {
             funds={analysis.funds}
             total={analysis.totals.marketValue}
           />
-          <RegionBreakdown key={upload?.fileName} root={analysis.regions} funds={analysis.funds} />
+          <RegionBreakdown
+            key={upload?.fileName}
+            root={analysis.regions}
+            funds={analysis.funds}
+            corrections={analysis.countryCorrections}
+          />
           <GroupBreakdown
             key={`countries-${upload?.fileName}`}
             root={analysis.countries}

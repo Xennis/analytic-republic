@@ -1,5 +1,5 @@
-import type { BreakdownNode } from "@analytic-republic/portfolio";
-import { ChevronRight } from "lucide-react";
+import { countryLabel, type BreakdownNode } from "@analytic-republic/portfolio";
+import { ChevronRight, Info } from "lucide-react";
 import { Fragment, useState } from "react";
 import {
   Breadcrumb,
@@ -12,7 +12,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RANK_COUNT, RANK_OTHER_COLOR, rankColor } from "@/lib/colors";
 import { formatEur, formatPercent } from "@/lib/format";
-import type { FundSeries } from "@/lib/portfolio";
+import type { CountryCorrection, FundSeries } from "@/lib/portfolio";
 import { cn } from "@/lib/utils";
 import { Donut, type Slice } from "./Donut";
 import { FundLegend, FundMixBar } from "./FundMix";
@@ -30,10 +30,11 @@ const HINTS = [
 type Props = {
   root: BreakdownNode;
   funds: FundSeries[];
+  corrections: CountryCorrection[];
 };
 
 /** Donut with drill-down world → region → country → company, plus a full list. */
-export function RegionBreakdown({ root, funds }: Props) {
+export function RegionBreakdown({ root, funds, corrections }: Props) {
   const [path, setPath] = useState<string[]>([]);
 
   // Resolve the path; ids that no longer exist (new upload) end it.
@@ -155,9 +156,56 @@ export function RegionBreakdown({ root, funds }: Props) {
               Prozentangaben beziehen sich auf den gesamten Depotwert. Der Balken unter jedem
               Eintrag zeigt, aus welchen ETFs der Betrag stammt.
             </p>
+            {corrections.length > 0 && (
+              <CorrectionsNote corrections={corrections} funds={funds} total={total} />
+            )}
           </div>
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function CorrectionsNote({
+  corrections,
+  funds,
+  total,
+}: {
+  corrections: CountryCorrection[];
+  funds: FundSeries[];
+  total: number;
+}) {
+  const fundLabel = (isin: string) => funds.find((fund) => fund.isin === isin)?.label ?? isin;
+  return (
+    <details className="group text-xs text-muted-foreground">
+      <summary className="inline-flex cursor-pointer list-none items-center gap-1 hover:text-foreground [&::-webkit-details-marker]:hidden">
+        <Info className="size-3.5" aria-hidden />
+        Länderzuordnung angepasst ({corrections.length})
+      </summary>
+      <div className="mt-2 flex flex-col gap-2 rounded-lg border p-3">
+        <p>
+          Manche ETFs halten andere ETFs, etwa einen Brasilien-ETF. Der Anbieter nennt als Land
+          dort, wo der Fonds aufgelegt ist. Hier zählt stattdessen das Land aus dem Fondsnamen, weil
+          das Geld wirtschaftlich dort investiert ist. Einen Sektor haben diese Positionen nicht.
+        </p>
+        <ul className="flex flex-col gap-1">
+          {corrections.map((correction) => (
+            <li
+              key={`${correction.fundIsin}:${correction.name}`}
+              className="flex items-baseline gap-2"
+            >
+              <span className="min-w-0 truncate">
+                <span className="text-foreground">{correction.name}</span> in{" "}
+                {fundLabel(correction.fundIsin)}: {countryLabel(correction.reportedCountry)} →{" "}
+                {countryLabel(correction.country)}
+              </span>
+              <span className="ml-auto tabular-nums">
+                {formatPercent(correction.value / total)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </details>
   );
 }

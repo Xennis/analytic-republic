@@ -10,8 +10,12 @@ export type Holding = {
   weight: number;
   /** ISO 3166-1 alpha-2 country of risk, "EU" for euro positions without a country. */
   country?: string;
-  /** Only set for equities. */
+  /** Country published by the provider when `country` was corrected. */
+  reportedCountry?: string;
+  /** Only set for equities that are not funds. */
   sector?: SectorId;
+  /** The holding is itself a fund, e.g. a country ETF inside an emerging markets ETF. */
+  isFund?: true;
   kind: HoldingKind;
 };
 

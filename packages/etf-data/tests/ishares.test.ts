@@ -96,6 +96,39 @@ describe("normalizeIsharesFund", () => {
     });
   });
 
+  test("takes the country of held iShares funds from their name", () => {
+    const data = holdings([
+      [
+        "ISHARES MSCI BRAZIL UCITS ET USDHA",
+        "DE000A0Q4R85",
+        60,
+        "Deutschland",
+        "Finanzwesen",
+        "Aktien",
+      ],
+      ["ISHARES MSCI EM UCITS ETF", "IE00B0M63177", 40, "Irland", "Finanzwesen", "Aktien"],
+    ]);
+    expect(normalizeIsharesFund(ref, fundHeader(), data).holdings).toEqual([
+      {
+        name: "ISHARES MSCI BRAZIL UCITS ET USDHA",
+        isin: "DE000A0Q4R85",
+        weight: 0.6,
+        country: "BR",
+        reportedCountry: "DE",
+        kind: "equity",
+        isFund: true,
+      },
+      {
+        name: "ISHARES MSCI EM UCITS ETF",
+        isin: "IE00B0M63177",
+        weight: 0.4,
+        country: "IE",
+        kind: "equity",
+        isFund: true,
+      },
+    ]);
+  });
+
   test("rejects a portfolio id that belongs to another fund", () => {
     expect(() => normalizeIsharesFund(ref, fundHeader("IE0000000009"), exampleHoldings)).toThrow(
       /expected IE0000000001/,

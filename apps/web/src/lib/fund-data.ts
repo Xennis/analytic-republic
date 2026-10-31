@@ -19,5 +19,7 @@ export const cachedFx: FxRates | undefined = Object.values(fxFiles)[0];
 
 /** True when the cache was written by an older version of `pnpm fetch-data`. */
 export const cacheOutdated = [...cachedFunds.values()].some((fund) =>
-  fund.holdings.some((holding) => holding.kind === "equity" && !isSectorId(holding.sector)),
+  fund.holdings.some(
+    (holding) => holding.kind === "equity" && !holding.isFund && !isSectorId(holding.sector),
+  ),
 );
