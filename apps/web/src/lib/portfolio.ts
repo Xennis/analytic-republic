@@ -1,6 +1,7 @@
 import type { FundData, FxRates } from "@analytic-republic/etf-data";
 import {
   breakdownByRegion,
+  breakdownBySector,
   companies,
   lookThrough,
   totals,
@@ -21,6 +22,7 @@ export type Analysis = {
   /** Funds with data, largest first. Fixes label and color of each fund for all charts. */
   funds: FundSeries[];
   regions: BreakdownNode;
+  sectors: BreakdownNode;
   companies: BreakdownNode[];
   /** Positions that could not be valued because the cache has no data for them. */
   missing: ValuedPosition[];
@@ -46,6 +48,7 @@ export function analyze(
       color: seriesColor(index),
     })),
     regions: breakdownByRegion(exposures),
+    sectors: breakdownBySector(exposures),
     companies: companies(exposures),
     missing: valued.filter((position) => position.marketValue === undefined),
   };

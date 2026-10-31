@@ -5,10 +5,11 @@ import { CsvDropzone } from "@/components/CsvDropzone";
 import { FundAllocation } from "@/components/FundAllocation";
 import { KpiCards } from "@/components/KpiCards";
 import { RegionBreakdown } from "@/components/RegionBreakdown";
+import { SectorBreakdown } from "@/components/SectorBreakdown";
 import { TopCompanies } from "@/components/TopCompanies";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { cachedFunds, cachedFx } from "@/lib/fund-data";
+import { cacheOutdated, cachedFunds, cachedFx } from "@/lib/fund-data";
 import { formatDate } from "@/lib/format";
 import { analyze } from "@/lib/portfolio";
 
@@ -70,6 +71,19 @@ export default function App() {
         </Alert>
       )}
 
+      {status && cacheOutdated && (
+        <Alert>
+          <AlertTriangle />
+          <AlertTitle>ETF-Daten veraltet</AlertTitle>
+          <AlertDescription>
+            <p>
+              Der Cache stammt von einer älteren Version. Lade die Daten neu und starte die App neu:{" "}
+              <code className="font-mono">pnpm fetch-data</code>
+            </p>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {!upload && (
         <CsvDropzone
           onFile={(file) => {
@@ -110,6 +124,12 @@ export default function App() {
             total={analysis.totals.marketValue}
           />
           <RegionBreakdown key={upload?.fileName} root={analysis.regions} funds={analysis.funds} />
+          <SectorBreakdown
+            key={`sectors-${upload?.fileName}`}
+            root={analysis.sectors}
+            funds={analysis.funds}
+            total={analysis.totals.marketValue}
+          />
           <TopCompanies
             companies={analysis.companies}
             funds={analysis.funds}

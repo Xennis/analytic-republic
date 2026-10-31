@@ -1,5 +1,13 @@
 import type { BreakdownNode } from "@analytic-republic/portfolio";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Text,
+  XAxis,
+  YAxis,
+  type YAxisTickContentProps,
+} from "recharts";
 import {
   ChartContainer,
   ChartLegend,
@@ -29,10 +37,21 @@ type Props = {
   total: number;
   /** When the rows are part of a group, the tooltip also shows the share of it. */
   parent?: BreakdownNode;
+  /** Makes bars and their labels clickable. */
+  onRowClick?: (node: BreakdownNode) => void;
+  /** Width of the label column in px. */
+  labelWidth?: number;
 };
 
 /** Horizontal bars in percent of the portfolio, stacked by the ETFs the value comes from. */
-export function FundStackedBars({ rows, funds, total, parent }: Props) {
+export function FundStackedBars({
+  rows,
+  funds,
+  total,
+  parent,
+  onRowClick,
+  labelWidth = 190,
+}: Props) {
   // Chart keys must be valid CSS identifiers, ISINs are.
   const config: ChartConfig = Object.fromEntries(
     funds.map((fund) => [fund.isin, { label: fund.label, color: fund.color }]),
@@ -44,6 +63,31 @@ export function FundStackedBars({ rows, funds, total, parent }: Props) {
       Object.entries(node.byFund).map(([isin, value]) => [isin, value / total]),
     ),
   }));
+
+  // Shows the full name on hover and forwards clicks on a label.
+  const renderTick = ({ x, y, index }: YAxisTickContentProps) => {
+    const node = rows[index];
+    if (!node) return <g />;
+    return (
+      <g
+        onClick={onRowClick && (() => onRowClick(node))}
+        className={onRowClick ? "cursor-pointer" : undefined}
+      >
+        <title>{node.fullLabel ?? node.label}</title>
+        <Text
+          x={Number(x) - 4}
+          y={Number(y)}
+          width={labelWidth - 8}
+          textAnchor="end"
+          verticalAnchor="middle"
+          fontSize={12}
+          className="fill-muted-foreground"
+        >
+          {node.label}
+        </Text>
+      </g>
+    );
+  };
 
   return (
     <ChartContainer
@@ -62,10 +106,10 @@ export function FundStackedBars({ rows, funds, total, parent }: Props) {
         <YAxis
           type="category"
           dataKey="label"
-          width={190}
+          width={labelWidth}
           tickLine={false}
           axisLine={false}
-          tick={{ fontSize: 12 }}
+          tick={renderTick}
         />
         <ChartTooltip
           cursor={{ fill: "var(--muted)", opacity: 0.6 }}
@@ -110,6 +154,11 @@ export function FundStackedBars({ rows, funds, total, parent }: Props) {
             stroke="var(--background)"
             strokeWidth={1}
             isAnimationActive={false}
+            className={onRowClick ? "cursor-pointer" : undefined}
+            onClick={(_, index) => {
+              const node = rows[index];
+              if (node && onRowClick) onRowClick(node);
+            }}
           />
         ))}
       </BarChart>

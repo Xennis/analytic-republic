@@ -1,4 +1,4 @@
-import type { FundData, FxRates } from "@analytic-republic/etf-data";
+import { isSectorId, type FundData, type FxRates } from "@analytic-republic/etf-data";
 
 // Written by `pnpm fetch-data`. Globs instead of imports so the app still starts
 // (with a hint) when the cache has not been created yet.
@@ -16,3 +16,8 @@ export const cachedFunds: ReadonlyMap<string, FundData> = new Map(
 );
 
 export const cachedFx: FxRates | undefined = Object.values(fxFiles)[0];
+
+/** True when the cache was written by an older version of `pnpm fetch-data`. */
+export const cacheOutdated = [...cachedFunds.values()].some((fund) =>
+  fund.holdings.some((holding) => holding.kind === "equity" && !isSectorId(holding.sector)),
+);
