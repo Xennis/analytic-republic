@@ -1,6 +1,7 @@
-import type { Holding } from "@analytic-republic/etf-data";
+import type { Holding, SectorId } from "@analytic-republic/etf-data";
 import { companyName, issuerKey } from "./issuers.ts";
 import { countryLabel, REGION_LABELS, regionOf } from "./regions.ts";
+import { sectorLabel } from "./sectors.ts";
 import type { ValuedPosition } from "./valuation.ts";
 
 /** Part of one fund holding owned through one position, in EUR. */
@@ -12,13 +13,18 @@ export type Exposure = {
 
 export type BreakdownNode = {
   id: string;
+  /** Short label for charts. */
   label: string;
+  /** Longer label, e.g. for a hover title, when it differs from `label`. */
+  fullLabel?: string;
   /** EUR */
   value: number;
   /** EUR per fund ISIN that contributes to this node. */
   byFund: Record<string, number>;
   /** ISO country code, set on company nodes. */
   country?: string;
+  /** GICS sector, set on company nodes. */
+  sector?: SectorId;
   /** Largest first. */
   children: BreakdownNode[];
 };
@@ -67,6 +73,7 @@ function addCompany(parent: MutableNode, exposure: Exposure): void {
   const company = child(parent, issuerKey(holding.name, holding.country), "");
   add(company, exposure);
   company.country = holding.country;
+  company.sector = holding.sector;
   if (exposure.value > company.labelWeight) {
     company.label = companyName(holding.name);
     company.labelWeight = exposure.value;
@@ -81,8 +88,17 @@ function freeze(node: MutableNode): BreakdownNode {
     byFund: node.byFund,
     children: [...node.children.values()].map(freeze).sort((a, b) => b.value - a.value),
   };
+  if (node.fullLabel) frozen.fullLabel = node.fullLabel;
   if (node.country) frozen.country = node.country;
+  if (node.sector) frozen.sector = node.sector;
   return frozen;
+}
+
+function addCash(root: MutableNode, exposure: Exposure): void {
+  const { holding } = exposure;
+  const cash = child(root, CASH_NODE_ID, "Cash & Derivate");
+  add(cash, exposure);
+  add(child(cash, `${CASH_NODE_ID}:${holding.name}`, holding.name), exposure);
 }
 
 /**
@@ -96,9 +112,7 @@ export function breakdownByRegion(exposures: readonly Exposure[]): BreakdownNode
     add(root, exposure);
 
     if (holding.kind !== "equity") {
-      const cash = child(root, CASH_NODE_ID, "Cash & Derivate");
-      add(cash, exposure);
-      add(child(cash, `${CASH_NODE_ID}:${holding.name}`, holding.name), exposure);
+      addCash(root, exposure);
       continue;
     }
 
@@ -108,6 +122,30 @@ export function breakdownByRegion(exposures: readonly Exposure[]): BreakdownNode
     const country = child(region, holding.country ?? "??", countryLabel(holding.country));
     add(country, exposure);
     addCompany(country, exposure);
+  }
+  return freeze(root);
+}
+
+/**
+ * Tree all → sector → company. Cash and derivatives form a separate top-level node,
+ * split by holding.
+ */
+export function breakdownBySector(exposures: readonly Exposure[]): BreakdownNode {
+  const root = createNode("sectors", "Alle Sektoren");
+  for (const exposure of exposures) {
+    const { holding } = exposure;
+    add(root, exposure);
+
+    if (holding.kind !== "equity") {
+      addCash(root, exposure);
+      continue;
+    }
+
+    const label = sectorLabel(holding.sector);
+    const sector = child(root, holding.sector ?? "unknown", label.short);
+    if (label.full !== label.short) sector.fullLabel = label.full;
+    add(sector, exposure);
+    addCompany(sector, exposure);
   }
   return freeze(root);
 }

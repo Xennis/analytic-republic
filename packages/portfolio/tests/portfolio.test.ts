@@ -3,6 +3,7 @@ import type { Position } from "@analytic-republic/traderepublic";
 import { describe, expect, test } from "vite-plus/test";
 import {
   breakdownByRegion,
+  breakdownBySector,
   CASH_NODE_ID,
   companies,
   lookThrough,
@@ -18,10 +19,28 @@ const world: FundData = {
   holdingsAsOf: "2026-10-29",
   nav: { value: 110, currency: "USD", asOf: "2026-10-30" },
   holdings: [
-    { name: "ALPHABET CLASS A", weight: 0.3, country: "US", kind: "equity" },
-    { name: "ALPHABET CLASS C", weight: 0.2, country: "US", kind: "equity" },
-    { name: "SHOP CORP", weight: 0.1, country: "CA", kind: "equity" },
-    { name: "SAP", weight: 0.35, country: "DE", kind: "equity" },
+    {
+      name: "ALPHABET CLASS A",
+      weight: 0.3,
+      country: "US",
+      sector: "communication-services",
+      kind: "equity",
+    },
+    {
+      name: "ALPHABET CLASS C",
+      weight: 0.2,
+      country: "US",
+      sector: "communication-services",
+      kind: "equity",
+    },
+    {
+      name: "SHOP CORP",
+      weight: 0.1,
+      country: "CA",
+      sector: "information-technology",
+      kind: "equity",
+    },
+    { name: "SAP", weight: 0.35, country: "DE", sector: "information-technology", kind: "equity" },
     { name: "USD CASH", weight: 0.05, country: "US", kind: "cash" },
   ],
 };
@@ -33,8 +52,14 @@ const europe: FundData = {
   holdingsAsOf: "2026-10-29",
   nav: { value: 50, currency: "EUR", asOf: "2026-10-30" },
   holdings: [
-    { name: "SAP SE", weight: 0.6, country: "DE", kind: "equity" },
-    { name: "NESTLE SA", weight: 0.4, country: "CH", kind: "equity" },
+    {
+      name: "SAP SE",
+      weight: 0.6,
+      country: "DE",
+      sector: "information-technology",
+      kind: "equity",
+    },
+    { name: "NESTLE SA", weight: 0.4, country: "CH", sector: "consumer-staples", kind: "equity" },
   ],
 };
 
@@ -99,6 +124,28 @@ describe("breakdownByRegion", () => {
     const germany = node("europe", "DE");
     expect(germany?.byFund[world.isin]).toBeCloseTo(350);
     expect(germany?.byFund[europe.isin]).toBeCloseTo(120);
+  });
+});
+
+describe("breakdownBySector", () => {
+  const tree = breakdownBySector(lookThrough(valued));
+
+  test("splits the market value into sectors with short and full labels", () => {
+    expect(tree.value).toBeCloseTo(1200);
+    expect(tree.children.map((c) => [c.id, c.label, c.fullLabel, Math.round(c.value)])).toEqual([
+      ["information-technology", "IT", "Informationstechnologie", 570],
+      ["communication-services", "Kommunikation", "Kommunikationsdienste", 500],
+      ["consumer-staples", "Basiskonsum", "Nichtzyklische Konsumgüter", 80],
+      [CASH_NODE_ID, "Cash & Derivate", undefined, 50],
+    ]);
+  });
+
+  test("lists the companies of a sector, merged across funds", () => {
+    const it = tree.children[0]!;
+    expect(it.children.map((c) => [c.label, Math.round(c.value), c.sector])).toEqual([
+      ["SAP", 470, "information-technology"],
+      ["SHOP CORP", 100, "information-technology"],
+    ]);
   });
 });
 
