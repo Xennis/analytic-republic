@@ -31,6 +31,9 @@ export type BreakdownNode = {
 
 export const CASH_NODE_ID = "cash";
 
+/** Sector node of equities without a sector, e.g. funds inside a fund. */
+export const UNKNOWN_SECTOR_ID = "unknown";
+
 /** Splits every valued position into its fund holdings. */
 export function lookThrough(positions: readonly ValuedPosition[]): Exposure[] {
   return positions.flatMap((position) =>
@@ -142,7 +145,7 @@ export function breakdownBySector(exposures: readonly Exposure[]): BreakdownNode
     }
 
     const label = sectorLabel(holding.sector);
-    const sector = child(root, holding.sector ?? "unknown", label.short);
+    const sector = child(root, holding.sector ?? UNKNOWN_SECTOR_ID, label.short);
     if (label.full !== label.short) sector.fullLabel = label.full;
     add(sector, exposure);
     addCompany(sector, exposure);
