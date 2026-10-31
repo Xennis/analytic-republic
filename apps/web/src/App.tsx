@@ -5,6 +5,7 @@ import { CsvDropzone } from "@/components/CsvDropzone";
 import { FundAllocation } from "@/components/FundAllocation";
 import { KpiCards } from "@/components/KpiCards";
 import { RegionBreakdown } from "@/components/RegionBreakdown";
+import { TopCompanies } from "@/components/TopCompanies";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { cachedFunds, cachedFx } from "@/lib/fund-data";
@@ -109,6 +110,11 @@ export default function App() {
             total={analysis.totals.marketValue}
           />
           <RegionBreakdown key={upload?.fileName} root={analysis.regions} funds={analysis.funds} />
+          <TopCompanies
+            companies={analysis.companies}
+            funds={analysis.funds}
+            total={analysis.totals.marketValue}
+          />
         </>
       )}
     </div>
