@@ -1,0 +1,15 @@
+# Never commit broker exports (real personal data)
+*.csv
+
+# Private notes, never committed
+.local/
+
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Downloaded ETF data, regenerate with `pnpm fetch-data`
+packages/etf-data/cache/
+
+.DS_Store
