@@ -5,10 +5,19 @@ import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { derivePositions, parseTransactions } from "@analytic-republic/traderepublic";
 import { z } from "zod";
-import { fetchEcbRates, fetchIsharesFund, findIsharesFund, type FundRef } from "../src/index.ts";
+import {
+  fetchEcbRates,
+  fetchImfEconomy,
+  fetchIsharesFund,
+  findIsharesFund,
+  WORLD_BENCHMARK,
+  type FundRef,
+} from "../src/index.ts";
 
 const cacheDir = new URL("../cache/", import.meta.url);
 const fundsDir = new URL("funds/", cacheDir);
+// Funds the portfolio is compared with, kept apart so the app does not take them as positions.
+const benchmarksDir = new URL("benchmarks/", cacheDir);
 // ISIN → provider and id, so the search only runs once per fund.
 const refsFile = new URL("fund-refs.json", cacheDir);
 
@@ -50,6 +59,7 @@ if (csvArg) {
 }
 
 await mkdir(fundsDir, { recursive: true });
+await mkdir(benchmarksDir, { recursive: true });
 
 let failed = 0;
 // Sequential on purpose: a handful of requests, no need to hammer the API.
@@ -82,6 +92,26 @@ try {
 } catch (error) {
   failed++;
   console.error(`✗ EZB-Kurse: ${error instanceof Error ? error.message : String(error)}`);
+}
+
+try {
+  const economy = await fetchImfEconomy();
+  await writeJson(new URL("economy.json", cacheDir), economy);
+  console.log(`✓ IWF-BIP ${economy.year}: ${Object.keys(economy.gdpNominal).length} Länder`);
+} catch (error) {
+  failed++;
+  console.error(`✗ IWF-BIP: ${error instanceof Error ? error.message : String(error)}`);
+}
+
+try {
+  const benchmark = await fetchIsharesFund(WORLD_BENCHMARK);
+  await writeJson(new URL(`${benchmark.isin}.json`, benchmarksDir), benchmark);
+  console.log(
+    `✓ Vergleichsfonds ${benchmark.name}: ${benchmark.holdings.length} Positionen vom ${benchmark.holdingsAsOf}`,
+  );
+} catch (error) {
+  failed++;
+  console.error(`✗ Vergleichsfonds: ${error instanceof Error ? error.message : String(error)}`);
 }
 
 if (failed > 0) process.exitCode = 1;
