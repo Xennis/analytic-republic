@@ -1,0 +1,22 @@
+{
+  "name": "@analytic-republic/portfolio",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Values positions and breaks them down by region, country and company (look-through).",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vp test"
+  },
+  "dependencies": {
+    "@analytic-republic/etf-data": "workspace:*",
+    "@analytic-republic/traderepublic": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}
