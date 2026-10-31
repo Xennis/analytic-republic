@@ -7,6 +7,13 @@ import type { EconomyData } from "../model.ts";
 // `"": null` entry, at the level of the indicators and of the countries.
 const API_URL = "https://www.imf.org/external/datamapper/api/v1/";
 
+// The API answers the default User-Agent of Node's fetch with HTTP 403, so the script
+// names itself.
+const HEADERS = {
+  Accept: "application/json",
+  "User-Agent": "analytic-republic",
+};
+
 /** GDP in current USD and in purchasing power parity (international dollars). */
 const INDICATORS = { nominal: "NGDPD", ppp: "PPPGDP" } as const;
 
@@ -49,7 +56,7 @@ export async function fetchImfEconomy(
 ): Promise<EconomyData> {
   const year = today.getUTCFullYear() - 1;
   const shares = async (indicator: string) => {
-    const response = await fetchFn(API_URL + indicator);
+    const response = await fetchFn(API_URL + indicator, { headers: HEADERS });
     if (!response.ok) throw new Error(`IMF ${indicator}: HTTP ${response.status}`);
     return parseImfShares((await response.json()) as ImfIndicatorResponse, indicator, year);
   };
