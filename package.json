@@ -8,7 +8,7 @@
     "build": "vp run web#build",
     "test": "vp run -r test",
     "check": "vp check",
-    "fetch-data": "vp run @analytic-republic/etf-data#fetch"
+    "fetch-data": "pnpm --filter @analytic-republic/etf-data fetch-data"
   },
   "devDependencies": {
     "vite-plus": "catalog:"

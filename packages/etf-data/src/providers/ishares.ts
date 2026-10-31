@@ -1,0 +1,194 @@
+import { z } from "zod";
+import { countryCodeFromGermanName } from "../countries.ts";
+import type { FundData, Holding, HoldingKind } from "../model.ts";
+import type { IsharesFundRef } from "../registry.ts";
+
+// Unofficial JSON API behind the iShares product pages (relaunched 2026). The old
+// "...ajax?fileType=csv" download only returns HTML now.
+const API_URL =
+  "https://www.ishares.com/varnish-api/uk-retail01-product-data/product-data/api/v2/get-product-data";
+
+const BASE_PARAMS = {
+  appType: "PRODUCT_PAGE",
+  appSubType: "ISHARES",
+  targetSite: "de-ishares-v2",
+  locale: "de_DE",
+  userType: "individual",
+  excludeContent: "true",
+};
+
+export class IsharesError extends Error {
+  override name = "IsharesError";
+}
+
+const dataPoint = <T extends z.ZodType>(value: T) => z.object({ value });
+
+const fundHeaderSchema = z.object({
+  fundName: z.string(),
+  currencyCode: z.string().length(3),
+  componentsByNameMap: z.object({
+    fundHeader: z.object({
+      containersByNameMap: z.object({
+        fundName: z.object({
+          dataPointsByNameMap: z.object({ productIsin: dataPoint(z.string()) }),
+        }),
+        fundNav: z.object({
+          dataPointsByNameMap: z.object({
+            navAmount: z.object({ value: z.number().positive(), asOfDate: z.number() }),
+          }),
+        }),
+      }),
+    }),
+  }),
+});
+
+const column = <T extends z.ZodType>(item: T) => dataPoint(z.array(item.nullable()));
+
+const holdingsSchema = z.object({
+  componentsByNameMap: z.object({
+    holdings: z.object({
+      containersByNameMap: z.object({
+        all: z.object({
+          dataPointsByNameMap: z.object({
+            asOfDate: dataPoint(z.number()),
+            issueName: column(z.string()),
+            isin: column(z.string()),
+            holdingPercent: column(z.number()),
+            countryOfRisk: column(z.string()),
+            sectorName: column(z.string()),
+            assetClass: column(z.string()),
+          }),
+        }),
+      }),
+    }),
+  }),
+});
+
+export type IsharesFundHeaderResponse = z.input<typeof fundHeaderSchema>;
+export type IsharesHoldingsResponse = z.input<typeof holdingsSchema>;
+
+const KIND_BY_ASSET_CLASS: Record<string, HoldingKind> = {
+  Aktien: "equity",
+  Geldmarkt: "cash",
+  "Money Market": "cash",
+  "Cash Collateral and Margins": "cash",
+  Futures: "derivative",
+  FX: "derivative",
+};
+
+/** 20261029 → "2026-10-29" */
+function isoDate(value: number): string {
+  const digits = String(value);
+  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
+}
+
+function parse<T extends z.ZodType>(schema: T, data: unknown, what: string): z.output<T> {
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    throw new IsharesError(
+      `Unexpected ${what} response, the iShares API may have changed:\n${z.prettifyError(result.error)}`,
+    );
+  }
+  return result.data;
+}
+
+/** Turns the raw API responses into the provider independent format. */
+export function normalizeIsharesFund(
+  ref: IsharesFundRef,
+  fundHeaderResponse: unknown,
+  holdingsResponse: unknown,
+): FundData {
+  const header = parse(fundHeaderSchema, fundHeaderResponse, "fundHeader");
+  const containers = header.componentsByNameMap.fundHeader.containersByNameMap;
+  const isin = containers.fundName.dataPointsByNameMap.productIsin.value;
+  if (isin !== ref.isin) {
+    throw new IsharesError(
+      `Portfolio ${ref.portfolioId} is ${isin}, expected ${ref.isin}. Check the registry.`,
+    );
+  }
+  const nav = containers.fundNav.dataPointsByNameMap.navAmount;
+
+  const columns = parse(holdingsSchema, holdingsResponse, "holdings").componentsByNameMap.holdings
+    .containersByNameMap.all.dataPointsByNameMap;
+  const names = columns.issueName.value;
+  for (const [key, { value }] of Object.entries(columns)) {
+    if (Array.isArray(value) && value.length !== names.length) {
+      throw new IsharesError(
+        `Holdings column ${key} has ${value.length} rows, expected ${names.length}`,
+      );
+    }
+  }
+
+  const holdings: Holding[] = [];
+  const unknownCountries = new Set<string>();
+  names.forEach((name, i) => {
+    const percent = columns.holdingPercent.value[i] ?? 0;
+    if (!name || percent === 0) return;
+
+    const countryName = columns.countryOfRisk.value[i];
+    const country = countryName ? countryCodeFromGermanName(countryName) : undefined;
+    if (countryName && !country) unknownCountries.add(countryName);
+
+    const holding: Holding = {
+      name: name.trim(),
+      weight: percent / 100,
+      kind: KIND_BY_ASSET_CLASS[columns.assetClass.value[i] ?? ""] ?? "other",
+    };
+    const holdingIsin = columns.isin.value[i]?.trim();
+    if (holdingIsin && holdingIsin !== "-") holding.isin = holdingIsin;
+    if (country) holding.country = country;
+    const sector = columns.sectorName.value[i]?.trim();
+    if (sector && sector !== "-") holding.sector = sector;
+    holdings.push(holding);
+  });
+
+  if (unknownCountries.size > 0) {
+    throw new IsharesError(
+      `Unknown country names in ${ref.isin}: ${[...unknownCountries].join(", ")}. ` +
+        "Add them to GERMAN_NAME_OVERRIDES in countries.ts.",
+    );
+  }
+  const totalWeight = holdings.reduce((sum, holding) => sum + holding.weight, 0);
+  if (Math.abs(totalWeight - 1) > 0.01) {
+    throw new IsharesError(
+      `Weights of ${ref.isin} sum up to ${(totalWeight * 100).toFixed(2)} %, expected 100 %`,
+    );
+  }
+
+  return {
+    isin: ref.isin,
+    name: header.fundName,
+    provider: "ishares",
+    holdingsAsOf: isoDate(columns.asOfDate.value),
+    nav: { value: nav.value, currency: header.currencyCode, asOf: isoDate(nav.asOfDate) },
+    holdings,
+  };
+}
+
+async function getComponent(
+  ref: IsharesFundRef,
+  component: string,
+  fetchFn: typeof fetch,
+): Promise<unknown> {
+  const params = new URLSearchParams({
+    ...BASE_PARAMS,
+    portfolioId: String(ref.portfolioId),
+    component,
+  });
+  const response = await fetchFn(`${API_URL}?${params}`, {
+    headers: { Accept: "application/json" },
+  });
+  if (!response.ok) {
+    throw new IsharesError(`${component} of ${ref.isin}: HTTP ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function fetchIsharesFund(
+  ref: IsharesFundRef,
+  fetchFn: typeof fetch = fetch,
+): Promise<FundData> {
+  const header = await getComponent(ref, "fundHeader", fetchFn);
+  const holdings = await getComponent(ref, "holdings.all", fetchFn);
+  return normalizeIsharesFund(ref, header, holdings);
+}
