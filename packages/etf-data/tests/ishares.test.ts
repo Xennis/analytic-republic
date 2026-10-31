@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vite-plus/test";
 import {
   fetchIsharesFund,
+  findIsharesFund,
   IsharesError,
   normalizeIsharesFund,
   type IsharesFundRef,
@@ -145,5 +146,47 @@ describe("fetchIsharesFund", () => {
   test("fails on HTTP errors", async () => {
     const fakeFetch = (async () => new Response("", { status: 503 })) as typeof fetch;
     await expect(fetchIsharesFund(ref, fakeFetch)).rejects.toThrow(/HTTP 503/);
+  });
+});
+
+describe("findIsharesFund", () => {
+  const respond = (results: object[], status = 200) =>
+    (async () => new Response(JSON.stringify({ results }), { status })) as typeof fetch;
+
+  test("searches by ISIN and returns the portfolio id", async () => {
+    let url: URL | undefined;
+    const fakeFetch = (async (input: string | URL) => {
+      url = new URL(String(input));
+      return new Response(
+        JSON.stringify({
+          results: [{ portfolioId: "42", portfolioType: "ISHARES_FUND_DATA", fundName: "X" }],
+        }),
+      );
+    }) as typeof fetch;
+
+    expect(await findIsharesFund("IE0000000001", fakeFetch)).toEqual({
+      isin: "IE0000000001",
+      provider: "ishares",
+      portfolioId: 42,
+    });
+    expect(url?.searchParams.get("query")).toBe("IE0000000001");
+  });
+
+  test("returns undefined for funds iShares does not know", async () => {
+    expect(await findIsharesFund("IE0000000001", respond([]))).toBeUndefined();
+    const other = respond([{ portfolioId: "7", portfolioType: "OTHER" }]);
+    expect(await findIsharesFund("IE0000000001", other)).toBeUndefined();
+  });
+
+  test("rejects ambiguous results", async () => {
+    const results = [
+      { portfolioId: "1", portfolioType: "ISHARES_FUND_DATA" },
+      { portfolioId: "2", portfolioType: "ISHARES_FUND_DATA" },
+    ];
+    await expect(findIsharesFund("IE0000000001", respond(results))).rejects.toThrow(/ambiguous/);
+  });
+
+  test("reports HTTP errors", async () => {
+    await expect(findIsharesFund("IE0000000001", respond([], 503))).rejects.toThrow(/HTTP 503/);
   });
 });

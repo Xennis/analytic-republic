@@ -15,15 +15,15 @@ The CSV file is only processed in the browser and never uploaded anywhere.
 
 ```bash
 pnpm install
-pnpm fetch-data   # downloads ETF holdings and NAVs from iShares plus ECB exchange rates
-pnpm dev          # starts the app on http://localhost:5173
+pnpm fetch-data ~/Downloads/export.csv   # downloads data of the ETFs in the export
+pnpm dev                                 # starts the app on http://localhost:5173
 ```
 
-Then drop the Trade Republic export into the app. Run `pnpm fetch-data` again whenever you want fresh data. The cache in `packages/etf-data/cache/` is not committed.
+Then drop the same Trade Republic export into the app.
 
-## Adding an ETF
+`pnpm fetch-data` reads the ISINs of the current positions from the export, looks them up via the iShares product search and downloads their holdings and NAVs plus ECB exchange rates. Run it again with a new export after buying another ETF, or without arguments to refresh the data of the funds fetched before. Everything ends up in `packages/etf-data/cache/` (including the ISIN → portfolio id mapping in `fund-refs.json`), which is not committed. Only the ISINs are sent to iShares, never the export itself.
 
-If the export contains an ETF without data, the app shows a notice. Add its ISIN and iShares portfolio id (the number in the product page URL, e.g. `…/produkte/123456/…`) to [`packages/etf-data/src/registry.ts`](packages/etf-data/src/registry.ts) and run `pnpm fetch-data`. Other providers need their own adapter next to `providers/ishares.ts`.
+ETFs from other providers are reported as not found. They need their own adapter next to `providers/ishares.ts`.
 
 ## Development
 
@@ -33,9 +33,9 @@ If the export contains an ETF without data, the app shows a notice. Add its ISIN
 | `pnpm test`  | Tests of all packages                         |
 | `pnpm build` | Production build of the app                   |
 
-| Package                  | Contents                                                          |
-| ------------------------ | ----------------------------------------------------------------- |
-| `packages/traderepublic` | CSV parser and position derivation                                |
-| `packages/etf-data`      | Data model, fund registry, iShares and ECB adapters, fetch script |
-| `packages/portfolio`     | Valuation, look-through, regions, sectors, companies              |
-| `apps/web`               | React app with shadcn/ui and Recharts                             |
+| Package                  | Contents                                             |
+| ------------------------ | ---------------------------------------------------- |
+| `packages/traderepublic` | CSV parser and position derivation                   |
+| `packages/etf-data`      | Data model, iShares and ECB adapters, fetch script   |
+| `packages/portfolio`     | Valuation, look-through, regions, sectors, companies |
+| `apps/web`               | React app with shadcn/ui and Recharts                |

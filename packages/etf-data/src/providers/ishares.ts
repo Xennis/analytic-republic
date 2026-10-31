@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { countryCodeFromGermanName } from "../countries.ts";
 import type { FundData, Holding, HoldingKind } from "../model.ts";
-import type { IsharesFundRef } from "../registry.ts";
+import type { IsharesFundRef } from "../fund-ref.ts";
 import type { SectorId } from "../sectors.ts";
 
 // Unofficial JSON API behind the iShares product pages (relaunched 2026). The old
@@ -16,6 +16,17 @@ const BASE_PARAMS = {
   locale: "de_DE",
   userType: "individual",
   excludeContent: "true",
+};
+
+// Product search behind the search box of the iShares site. Finds a fund by its ISIN.
+const SEARCH_URL = "https://www.ishares.com/varnish-api/core-search/search/products";
+
+const SEARCH_PARAMS = {
+  site: "de-ishares-v2",
+  locale: "de-de",
+  userType: "individual",
+  start: "0",
+  rows: "5",
 };
 
 export class IsharesError extends Error {
@@ -63,6 +74,10 @@ const holdingsSchema = z.object({
       }),
     }),
   }),
+});
+
+const searchSchema = z.object({
+  results: z.array(z.object({ portfolioId: z.string(), portfolioType: z.string() })),
 });
 
 export type IsharesFundHeaderResponse = z.input<typeof fundHeaderSchema>;
@@ -119,7 +134,7 @@ export function normalizeIsharesFund(
   const isin = containers.fundName.dataPointsByNameMap.productIsin.value;
   if (isin !== ref.isin) {
     throw new IsharesError(
-      `Portfolio ${ref.portfolioId} is ${isin}, expected ${ref.isin}. Check the registry.`,
+      `Portfolio ${ref.portfolioId} is ${isin}, expected ${ref.isin}. Check cache/fund-refs.json.`,
     );
   }
   const nav = containers.fundNav.dataPointsByNameMap.navAmount;
@@ -218,4 +233,36 @@ export async function fetchIsharesFund(
   const header = await getComponent(ref, "fundHeader", fetchFn);
   const holdings = await getComponent(ref, "holdings.all", fetchFn);
   return normalizeIsharesFund(ref, header, holdings);
+}
+
+/**
+ * Looks up the iShares portfolio id of a fund by its ISIN. Returns undefined when iShares
+ * does not know the fund, e.g. because it is from another provider.
+ */
+export async function findIsharesFund(
+  isin: string,
+  fetchFn: typeof fetch = fetch,
+): Promise<IsharesFundRef | undefined> {
+  const params = new URLSearchParams({ ...SEARCH_PARAMS, query: isin });
+  const response = await fetchFn(`${SEARCH_URL}?${params.toString()}`, {
+    headers: { Accept: "application/json" },
+  });
+  if (!response.ok) {
+    throw new IsharesError(`Search for ${isin}: HTTP ${response.status}`);
+  }
+  const { results } = parse(searchSchema, await response.json(), "search");
+  const ids = new Set(
+    results
+      .filter((result) => result.portfolioType === "ISHARES_FUND_DATA")
+      .map((result) => Number(result.portfolioId)),
+  );
+  if (ids.size > 1) {
+    throw new IsharesError(`Search for ${isin} is ambiguous: portfolios ${[...ids].join(", ")}`);
+  }
+  const [portfolioId] = ids;
+  if (portfolioId === undefined) return undefined;
+  if (!Number.isInteger(portfolioId)) {
+    throw new IsharesError(`Search for ${isin} returned an invalid portfolio id`);
+  }
+  return { isin, provider: "ishares", portfolioId };
 }

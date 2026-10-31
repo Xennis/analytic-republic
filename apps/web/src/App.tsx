@@ -107,9 +107,9 @@ export default function App() {
           <AlertDescription>
             <p>
               {analysis.missing.map((position) => `${position.name} (${position.isin})`).join(", ")}{" "}
-              fließen nicht in die Auswertung ein. Ergänze sie in{" "}
-              <code className="font-mono">packages/etf-data/src/registry.ts</code> und führe{" "}
-              <code className="font-mono">pnpm fetch-data</code> aus.
+              fließen nicht in die Auswertung ein. Führe{" "}
+              <code className="font-mono">pnpm fetch-data &lt;Export.csv&gt;</code> mit diesem
+              Export aus und lade die Seite neu. Bisher werden nur iShares-ETFs unterstützt.
             </p>
           </AlertDescription>
         </Alert>

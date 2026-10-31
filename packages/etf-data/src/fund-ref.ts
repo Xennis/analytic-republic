@@ -5,10 +5,5 @@ export type IsharesFundRef = {
   portfolioId: number;
 };
 
+/** Where to download a fund from. Resolved from its ISIN by the fetch script. */
 export type FundRef = IsharesFundRef;
-
-/**
- * All funds the fetch script downloads. Add an entry here when a new ETF shows up in
- * the Trade Republic export.
- */
-export const funds: readonly FundRef[] = [];
