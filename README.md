@@ -1,6 +1,6 @@
 # Analytic Republic
 
-Local web app that reads a Trade Republic transaction export (CSV) and uses a look-through analysis to show how the ETFs in the portfolio are spread across regions, countries and companies.
+Local web app that reads a Trade Republic transaction export (CSV) and uses a look-through analysis to show how the ETFs in the portfolio are spread across regions, countries, sectors and companies.
 
 The CSV file is only processed in the browser and never uploaded anywhere.
 
@@ -37,5 +37,5 @@ If the export contains an ETF without data, the app shows a notice. Add its ISIN
 | ------------------------ | ----------------------------------------------------------------- |
 | `packages/traderepublic` | CSV parser and position derivation                                |
 | `packages/etf-data`      | Data model, fund registry, iShares and ECB adapters, fetch script |
-| `packages/portfolio`     | Valuation, look-through, regions and companies                    |
+| `packages/portfolio`     | Valuation, look-through, regions, sectors, companies              |
 | `apps/web`               | React app with shadcn/ui and Recharts                             |
